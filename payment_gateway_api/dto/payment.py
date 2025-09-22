@@ -3,7 +3,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from payment_gateway_api.domain.currency_lib import CurrencyCode
-from payment_gateway_api.domain.acquiring_back import AcquiringBankStatus
+from payment_gateway_api.domain.acquiring_bank import AcquiringBankStatus
 
 
 class ProcessPaymentBody(BaseModel):
@@ -47,6 +47,15 @@ class ProcessPaymentBody(BaseModel):
         return v
     
 
+class PaymentRequest(BaseModel):
+    """
+    """
+    card_number: str = Field(..., max_length=19, min_length=14)
+    expiry_date: str = Field()
+    currency: CurrencyCode = Field()
+    amount: int = Field()
+    cvv: str = Field(..., min_length=3, max_length=4)
+
 class PaymentResponse(BaseModel):
     """
     payment_id: uuid
@@ -64,3 +73,7 @@ class PaymentResponse(BaseModel):
     exp_year: int
     currency: CurrencyCode
     amount: int
+
+
+class CheckPaymentBody(BaseModel):
+    payment_id: UUID = Field()

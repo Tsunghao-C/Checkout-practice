@@ -1,70 +1,70 @@
-from pydantic import BaseModel, Field, validator, root_validator
-from datetime import datetime
+# from pydantic import BaseModel, Field, validator, root_validator
+# from datetime import datetime
 
-from payment_gateway_api.domain.currency_lib import CurrencyCode
+# from payment_gateway_api.domain.currency_lib import CurrencyCode
 
 
-class ProcessPaymentBody(BaseModel):
-    card_number: str = Field(..., max_length=19, min_length=14)
-    exp_month: int = Field(..., ge=1, le=12)
-    exp_year: int = Field(..., ge=2000)  # Just ensure it's a reasonable year
-    currency: CurrencyCode
-    # ammount: int
-    # cvv: str
+# class ProcessPaymentBody(BaseModel):
+#     card_number: str = Field(..., max_length=19, min_length=14)
+#     exp_month: int = Field(..., ge=1, le=12)
+#     exp_year: int = Field(..., ge=2000)  # Just ensure it's a reasonable year
+#     currency: CurrencyCode
+#     # ammount: int
+#     # cvv: str
 
-    @validator("card_number")
-    def card_number_must_be_numbers(cls, v):
-        if v.isdigit():
-            return v
-        else:
-            raise ValueError("card_number must between 14 - 19 chars long and only digits allowed")
+#     @validator("card_number")
+#     def card_number_must_be_numbers(cls, v):
+#         if v.isdigit():
+#             return v
+#         else:
+#             raise ValueError("card_number must between 14 - 19 chars long and only digits allowed")
     
-    @root_validator
-    def month_year_must_be_in_future(cls, values):
-        exp_month = values.get('exp_month')
-        exp_year = values.get('exp_year')
+#     @root_validator
+#     def month_year_must_be_in_future(cls, values):
+#         exp_month = values.get('exp_month')
+#         exp_year = values.get('exp_year')
         
-        if exp_month is not None and exp_year is not None:
-            now = datetime.now()
-            current_year = now.year
-            current_month = now.month
+#         if exp_month is not None and exp_year is not None:
+#             now = datetime.now()
+#             current_year = now.year
+#             current_month = now.month
             
-            # Check if the expiration date is in the past
-            if exp_year < current_year or (exp_year == current_year and exp_month < current_month):
-                raise ValueError(f"expiration month-year {exp_month}-{exp_year} is not in the future")
+#             # Check if the expiration date is in the past
+#             if exp_year < current_year or (exp_year == current_year and exp_month < current_month):
+#                 raise ValueError(f"expiration month-year {exp_month}-{exp_year} is not in the future")
         
-        return values
+#         return values
     
-    @validator("currency", pre=True)
-    def capitalize_currency(cls, v):
-        return v.upper()
+#     @validator("currency", pre=True)
+#     def capitalize_currency(cls, v):
+#         return v.upper()
 
 
-# Test with valid future date
-try:
-    valid_model = ProcessPaymentBody(
-        card_number="123456789012345",
-        exp_month=12,
-        exp_year=2025,
-        currency="Gbp"
-    )
-    print("Valid model: ", valid_model)
-    card_last_4 = valid_model.card_number[-4:]
-    print("last four: ", card_last_4)
-except ValueError as e:
-    print("Validation error:", e)
+# # Test with valid future date
+# try:
+#     valid_model = ProcessPaymentBody(
+#         card_number="123456789012345",
+#         exp_month=12,
+#         exp_year=2025,
+#         currency="Gbp"
+#     )
+#     print("Valid model: ", valid_model)
+#     card_last_4 = valid_model.card_number[-4:]
+#     print("last four: ", card_last_4)
+# except ValueError as e:
+#     print("Validation error:", e)
 
-# Test with invalid currency
-try:
-    valid_model = ProcessPaymentBody(
-        card_number="123456789012345",
-        exp_month=12,
-        exp_year=2025,
-        currency="GBY"
-    )
-    print("Valid model: ", valid_model)
-except ValueError as e:
-    print("Validation error:", e)
+# # Test with invalid currency
+# try:
+#     valid_model = ProcessPaymentBody(
+#         card_number="123456789012345",
+#         exp_month=12,
+#         exp_year=2025,
+#         currency="GBY"
+#     )
+#     print("Valid model: ", valid_model)
+# except ValueError as e:
+#     print("Validation error:", e)
 
 # # Test with past date
 # try:
@@ -102,3 +102,53 @@ except ValueError as e:
 #     print("Future month model: ", future_model)
 # except ValueError as e:
 #     print("Validation error:", e)
+
+
+import requests
+from payment_gateway_api.dto.payment import PaymentRequest, PaymentResponse
+
+payload = PaymentRequest(
+    card_number="2222405343248875",
+    expiry_date="04/2025",
+    currency="GBP",
+    amount=100,
+    cvv="123"
+)
+
+
+print(payload.json(), type(payload.json()))
+
+response = requests.post(
+    url="http://localhost:8080/payments",
+    data=payload.json()
+)
+
+print(f"response is: {response}")
+print(f"type of response: {type(response)}")
+print(f"response content: {response.content}")
+print(f"response content: {response.status_code}")
+print(response.json(), type(response.json()))
+
+mock_db = {
+    "2f480028-92b4-4e77-862c-ab156378b82d": PaymentResponse(
+        payment_id="2f480028-92b4-4e77-862c-ab156378b82d",
+        status="Authorized",
+        last_4_card_number="9487",
+        exp_month=6,
+        exp_year=2028,
+        currency="GBP",
+        amount=1000,
+    ),
+    "e0009aa8-d7c8-44bd-8ede-638dfc4d41bc": PaymentResponse(
+        payment_id="e0009aa8-d7c8-44bd-8ede-638dfc4d41bc",
+        status="Declined",
+        last_4_card_number="3423",
+        exp_month=9,
+        exp_year=2028,
+        currency="USD",
+        amount=44,
+    )
+}
+
+print(mock_db.keys())
+print('2f480028-92b4-4e77-862c-ab156378b82d' in mock_db.keys())
